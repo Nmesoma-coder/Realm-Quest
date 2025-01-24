@@ -101,3 +101,52 @@
                 recipients)))
             (ok transfers))))
 
+;; Helper function for batch item transfer
+(define-private (transfer-single-item 
+    (item-id uint)
+    (recipient principal))
+    (let 
+        ((item (unwrap-panic (validate-and-fetch-item item-id))))
+        (asserts! (and
+                (is-eq (get owner item) tx-sender)
+                (get can-trade item)
+                (not (is-eq recipient tx-sender)))
+            err-permission-denied)
+        (map-set game-items
+            { item-id: item-id }
+            { owner: recipient,
+              item-uri: (get item-uri item),
+              can-trade: (get can-trade item) })
+        (ok true)))
+
+;; Create single game item
+(define-public (create-item (item-uri (string-utf8 256)) (can-trade bool))
+    (let
+        ((item-id (+ (var-get total-item-count) u1)))
+        (asserts! (is-eq tx-sender platform-admin) err-admin-only)
+        (asserts! (is-valid-item-uri item-uri) err-invalid-parameters)
+        (map-set game-items
+            { item-id: item-id }
+            { owner: tx-sender,
+              item-uri: item-uri,
+              can-trade: can-trade })
+        (var-set total-item-count item-id)
+        (ok item-id)))
+
+;; Transfer item ownership
+(define-public (transfer-item (item-id uint) (recipient principal))
+    (begin
+        (asserts! (<= item-id (var-get total-item-count)) err-invalid-parameters)
+        (let ((item (try! (validate-and-fetch-item item-id))))
+            (asserts! (and
+                    (is-eq (get owner item) tx-sender)
+                    (get can-trade item)
+                    (not (is-eq recipient tx-sender)))
+                err-permission-denied)
+            (map-set game-items
+                { item-id: item-id }
+                { owner: recipient,
+                  item-uri: (get item-uri item),
+                  can-trade: (get can-trade item) })
+            (ok true))))
+
