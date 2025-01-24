@@ -167,3 +167,42 @@
                   listing-timestamp: block-height })
             (ok true))))
 
+;; Purchase listed item
+(define-public (purchase-item (item-id uint))
+    (begin
+        (asserts! (<= item-id (var-get total-item-count)) err-invalid-parameters)
+        (let
+            ((item (try! (validate-and-fetch-item item-id)))
+             (listing (unwrap! (map-get? marketplace-item-listings { item-id: item-id }) err-resource-not-found)))
+            (asserts! (and
+                    (not (is-eq (get seller listing) tx-sender))
+                    (get can-trade item))
+                err-permission-denied)
+            (try! (stx-transfer? (get price listing) tx-sender (get seller listing)))
+            (map-set game-items
+                { item-id: item-id }
+                { owner: tx-sender,
+                  item-uri: (get item-uri item),
+                  can-trade: (get can-trade item) })
+            (map-delete marketplace-item-listings { item-id: item-id })
+            (ok true))))
+
+;; Remove item from marketplace listing
+(define-public (delist-item (item-id uint))
+    (begin
+        (asserts! (<= item-id (var-get total-item-count)) err-invalid-parameters)
+        (let ((listing (unwrap! (map-get? marketplace-item-listings { item-id: item-id }) err-resource-not-found)))
+            (asserts! (is-eq tx-sender (get seller listing)) err-permission-denied)
+            (map-delete marketplace-item-listings { item-id: item-id })
+            (ok true))))
+
+;; Update character progression
+(define-public (update-character-progression (experience uint) (level uint))
+    (begin
+        (asserts! (<= experience max-character-experience) err-invalid-parameters)
+        (asserts! (<= level max-character-level) err-invalid-parameters)
+        (map-set character-progression
+            { character: tx-sender }
+            { experience: experience, level: level })
+        (ok true)))
+
