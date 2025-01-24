@@ -150,3 +150,20 @@
                   can-trade: (get can-trade item) })
             (ok true))))
 
+;; List item for sale in marketplace
+(define-public (list-item-for-sale (item-id uint) (price uint))
+    (begin
+        (asserts! (<= item-id (var-get total-item-count)) err-invalid-parameters)
+        (let ((item (try! (validate-and-fetch-item item-id))))
+            (asserts! (and 
+                    (is-eq (get owner item) tx-sender)
+                    (> price u0)
+                    (get can-trade item))
+                err-pricing-error)
+            (map-set marketplace-item-listings
+                { item-id: item-id }
+                { seller: tx-sender, 
+                  price: price, 
+                  listing-timestamp: block-height })
+            (ok true))))
+
