@@ -206,3 +206,22 @@
             { experience: experience, level: level })
         (ok true)))
 
+;; Read-only Functions
+
+;; Get item details
+(define-read-only (get-item-details (item-id uint))
+    (if (<= item-id (var-get total-item-count))
+        (map-get? game-items { item-id: item-id })
+        none))
+
+;; Get marketplace listing details
+(define-read-only (get-marketplace-listing (item-id uint))
+    (map-get? marketplace-item-listings { item-id: item-id }))
+
+;; Get character progression
+(define-read-only (get-character-progression (character principal))
+    (map-get? character-progression { character: character }))
+
+;; Get total items created
+(define-read-only (get-total-items)
+    (var-get total-item-count))
